@@ -1,9 +1,8 @@
 '''
 Created on Dec 1, 2017
 
-@author: flyn
+@author: 
 '''
-import os
 import cv2
 import numpy as np
 from utility import inference_utility, inference_config
@@ -19,17 +18,7 @@ cv2.rectangle(img, (0, 0), (512, 40), (255,255,255), -1)
 box_size = (47,30)
 
 # color buttons
-buttons_dict = {"Wall": (13,61,251),
-                "Door": (165,0,0),
-                "Window": (0,117,255),
-                "W.Sill": (104,248,152),
-                "W.Head": (29,255,221),
-                "Shutter": (238,237,40),
-                "Balcony": (184,255,56),
-                "Trim": (255,146,4),
-                "Cornice": (255,68,1),
-                "Column": (246,0,1),
-                "Entrance": (0,201,255)}
+buttons_dict = inference_config.buttons_dict
 
 color_positions = {}
 for k,v in enumerate(buttons_dict.items()):
