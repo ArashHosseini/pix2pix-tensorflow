@@ -12,36 +12,36 @@ rect_bbox = []
 drawing = False
 mode = False
 brush_size = 5
-col = (205,220,175)[::-1]
+col = (205, 220, 175)[::-1]
 
-img = np.zeros((553,512,3), np.uint8)
-map_img = cv2.imread(inference_config.maps_tmp_file)
-img[41:553,0:512] = map_img
+img = np.zeros((553, 512, 3), np.uint8)
+map_img = cv2.imread(inference_config.maps_init_file)
+img[41:553, 0:512] = map_img
 
-drawing_area = [(-1000,40), (1000, 1000)]
-cv2.rectangle(img, (0, 0), (512, 40), (128,128,128), -1)
+drawing_area = [(-1000, 40), (1000, 1000)]
+cv2.rectangle(img, (0, 0), (512, 40), (128, 128, 128), -1)
 
-box_size = (128,30)
+box_size = (128, 30)
 
 # color buttons
-buttons_dict = {"Street": (255,255,255),
-                "Block": (230,230,225),
-                "Grass": (205,220,175),
-                "Buildings": (245,240,235)}
+buttons_dict = {"Street": (255, 255, 255),
+                "Block": (230, 230, 225),
+                "Grass": (205, 220, 175),
+                "Buildings": (245, 240, 235)}
 
 color_positions = {}
 
-for k,v in enumerate(buttons_dict.items()):
+for k, v in enumerate(buttons_dict.items()):
 
     button_color = v[1][::-1]
     button_text = v[0]
 
-    first_point = (((k+1)*box_size[0]), 0)
-    second_point = (k*box_size[0], box_size[1])
+    first_point = (((k + 1) * box_size[0]), 0)
+    second_point = (k * box_size[0], box_size[1])
     color_positions[button_color] = [first_point, second_point]
     
     cv2.rectangle(img, first_point, second_point, button_color, -1)
-    cv2.putText(img, button_text, (((k+1)*box_size[0]) - box_size[0], box_size[1]+8), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255))
+    cv2.putText(img, button_text, (((k + 1) * box_size[0]) - box_size[0], box_size[1] + 8), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255))
 
 
 def send_to_process():
@@ -88,7 +88,7 @@ def draw_rectangle(event, x, y, flags, param):
                 send_to_process()
 
                 if mode:
-                    cv2.rectangle(img, p_1, p_2, color=col,thickness=-1)
+                    cv2.rectangle(img, p_1, p_2, color=col, thickness=-1)
                     cv2.imshow('pix2pix', img)
 
                     p_1x, p_1y = p_1
@@ -102,7 +102,7 @@ def draw_rectangle(event, x, y, flags, param):
                     if (lx, ty) != (rx, by):
                         bbox = [lx, ty, rx, by]
                 else:
-                    cv2.circle(img, (x,y), brush_size,col,-1)            
+                    cv2.circle(img, (x, y), brush_size, col, -1)            
                     cv2.imshow('pix2pix', img)
 
                 # print ("Drawing Done") ################################# ARASH - callback when drawing is done
@@ -112,7 +112,7 @@ def draw_rectangle(event, x, y, flags, param):
                     if mode:
                         rect_endpoint_tmp = [(x, y)]
                     else:
-                        cv2.circle(img, (x,y), brush_size,col,-1)
+                        cv2.circle(img, (x, y), brush_size, col, -1)
                         cv2.imshow('pix2pix', img)
 
 img_copy = img.copy()
@@ -120,7 +120,7 @@ cv2.namedWindow('pix2pix')
 tmp_ = inference_config.maps_tmp_file
 cv2.setMouseCallback('pix2pix', draw_rectangle)
 
-post,get,pool,killer = inference_utility.process_handler("maps")
+post, get, pool, killer = inference_utility.process_handler("maps")
 
 while True:
 
@@ -136,7 +136,7 @@ while True:
             cv2.imshow('pix2pix', rect_cpy)
         else:
             rect_cpy = img.copy()
-            cv2.circle(rect_cpy, (x,y),brush_size,col,-1)            
+            cv2.circle(rect_cpy, (x, y), brush_size, col, -1)            
             cv2.imshow('pix2pix', rect_cpy)
 
             # print ("Drawing") ################################# ARASH - callback during drawing
