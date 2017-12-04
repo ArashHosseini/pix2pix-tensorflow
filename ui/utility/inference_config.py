@@ -26,3 +26,9 @@ buttons_dict = {"Wall": (13,61,251),
                 "Cornice": (255,68,1),
                 "Column": (246,0,1),
                 "Entrance": (0,201,255)}
+
+
+maps_buttons_dict = {"Street": (255, 255, 255),
+                "Block": (230, 230, 225),
+                "Grass": (205, 220, 175),
+                "Buildings": (245, 240, 235)}
