@@ -12,18 +12,18 @@ import ctypes
 import inference_config
 import time
 
-output_file = inference_config.output_file
 
-def process_handler():
+def process_handler(mode):
     live_process = []
     manager = mp.Manager()
     lifetime_end = manager.Value(ctypes.c_char_p, False)
     input_image_queue = mp.Queue()
     output_image_queue = mp.Queue()
-    img_cap_process = mp.Process(target =local_inference,
-                                 args = (input_image_queue,
+    img_cap_process = mp.Process(target=local_inference,
+                                 args=(input_image_queue,
                                          output_image_queue,
-                                         lifetime_end,))
+                                         lifetime_end,
+                                         mode,))
     
     live_process.append(img_cap_process)
     img_cap_process.start()
@@ -33,14 +33,21 @@ def process_handler():
 def local_inference(input_image_queue,
                     output_image_queue,
                     lifetime_end,
+                    mode,
                     *args):
     
     print "local inference started"
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
-        saver = tf.train.import_meta_graph(inference_config.model + "/export.meta")
-        saver.restore(sess, inference_config.model + "/export")
+        if mode == "facades":
+            output_file = inference_config.output_file
+            model = inference_config.model
+        else:
+            model = inference_config.maps_model
+            output_file = inference_config.output_maps_file 
+        saver = tf.train.import_meta_graph(model + "/export.meta")
+        saver.restore(sess, model + "/export")
         
         input_vars = json.loads(tf.get_collection("inputs")[0])
         output_vars = json.loads(tf.get_collection("outputs")[0])
@@ -51,7 +58,7 @@ def local_inference(input_image_queue,
             if not input_image_queue.empty():
                 start = time.time()
                 input_file = input_image_queue.get()
-                #if input_file:
+                # if input_file:
                 with open(input_file, "rb") as f:
                     input_data = f.read()
         

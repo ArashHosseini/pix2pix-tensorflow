@@ -101,7 +101,7 @@ cv2.namedWindow('pix2pix')
 tmp_ = inference_config.tmp_file
 cv2.setMouseCallback('pix2pix', draw_rectangle)
 
-post,get,pool,killer = inference_utility.process_handler()
+post,get,pool,killer = inference_utility.process_handler("facades")
 
 while True:
     key = cv2.waitKey(1) & 0xFF
