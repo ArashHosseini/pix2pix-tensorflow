@@ -8,6 +8,8 @@ import argparse
 import numpy as np
 from utility import inference_utility, inference_config
 
+support = ["maps"]
+
 class Pix2Pix_Draw(object):
     def __init__(self, *args):
 
@@ -123,6 +125,7 @@ class Pix2Pix_Draw(object):
         self.post, self.get, self.pool, self.killer = inference_utility.process_handler("maps")
         
         while True:
+            key = cv2.waitKey(1) & 0xFF
         
             if not self.drawing:
                 cv2.imshow('pix2pix', self.img)
@@ -133,13 +136,12 @@ class Pix2Pix_Draw(object):
                 end_point_tmp = self.rect_endpoint_tmp[0]
                 if self.mode:
                     cv2.rectangle(rect_cpy, start_point, end_point_tmp, color=self.col, thickness=-1)
-                    cv2.imshow('pix2pix', rect_cpy)
                 else:
                     rect_cpy = self.img.copy()
-                    cv2.circle(rect_cpy, (self.x, self.y), self.brush_size, self.col, -1)            
-                    cv2.imshow('pix2pix', rect_cpy)
+                    cv2.circle(rect_cpy, (self.x, self.y), self.brush_size, self.col, -1)  
+                              
+                cv2.imshow('pix2pix', rect_cpy)
         
-            key = cv2.waitKey(1) & 0xFF
             self.get_from_process()
         
             if key == ord('q'):
@@ -160,12 +162,18 @@ class Pix2Pix_Draw(object):
         
             if key == ord('s'):
                 resized_image = cv2.resize(img[41:553, 0:512], (256, 256))
-                cv2.imwrite("image.jpg", resized_image)
-                print ("Image saved!, go for tensorflow")
+                cv2.imwrite(self.tmp_, resized_image)
 
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Pix2Pix Inference Module')
+    parser.add_argument('-m', action="store", dest='inference_mode',help='select inference mode, default is maps', default="maps")
+    results = parser.parse_args()
+    if not results.inference_mode in support:
+        raise Exception("{0} not supported yet".format(results.inference_mode))
+    _inference_mode = results.inference_mode
+        
     draw = Pix2Pix_Draw()
     draw.setup_draw_btn_line()
     draw.draw_run()
