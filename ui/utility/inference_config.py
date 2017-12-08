@@ -11,8 +11,10 @@ output_file = os.path.join(_dir, "facades_sandbox/output_dir/output_inference.pn
 tmp_file = os.path.join(_dir, "facades_sandbox/input_dir/image.png")
 maps_model = os.path.join(_dir, "maps_sandbox/export")
 output_maps_file = os.path.join(_dir, "maps_sandbox/output_dir/output_inference.png")
+maps_init_ouput = output_resize_maps_file = os.path.join(_dir, "maps_sandbox/output_dir/resize_output_inference.png")
 maps_tmp_file = os.path.join(_dir, "maps_sandbox/input_dir/image.jpg")
 maps_init_file = os.path.join(_dir, "maps_sandbox/init_image/start_map.jpg")
+
 
     
 buttons_dict = {"Wall": (13,61,251),
@@ -29,6 +31,7 @@ buttons_dict = {"Wall": (13,61,251),
 
 
 maps_buttons_dict = {"Street": (255, 255, 255),
-                "Block": (230, 230, 225),
-                "Grass": (205, 220, 175),
-                "Buildings": (245, 240, 235)}
+                     "Block": (230, 230, 225),
+                     "Grass": (205, 220, 175),
+                     "Buildings": (245, 240, 235)}
+
