@@ -6,7 +6,7 @@ Created on Dec 4, 2017
 import cv2
 import argparse
 import numpy as np
-from utility import inference_utility, inference_config
+from utility import inference_utility, inference_config, drawing_utility
 
 support = ["maps"]
 
@@ -183,6 +183,14 @@ class Pix2Pix_Draw(object):
             if key == ord('-'):
                 self.brush_size -= 1
         
+            if key == ord('o'):
+                image_out = drawing_utility.outline_image(img[41:553,0:512], threshold_range=(100,20), overdraw_lines=True)
+                image_lines = image_out[1]
+                print (image_lines)
+
+                cv2.imshow("Outlined Image", image_out[0])
+                cv2.waitKey(0)
+
             if key == ord('s'):
                 resized_image = cv2.resize(img[41:553, 0:512], (256, 256))
                 cv2.imwrite(inference_config.output_resize_maps_file,  resized_image)
