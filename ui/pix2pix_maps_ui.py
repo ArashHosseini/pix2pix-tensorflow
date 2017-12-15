@@ -6,7 +6,7 @@ Created on Dec 4, 2017
 import cv2
 import argparse
 import numpy as np
-from utility import inference_utility, inference_config, drawing_utility
+from utility import inference_utility, inference_config
 
 support = ["maps", "facades"]
 
@@ -124,7 +124,6 @@ class Pix2Pix_Draw(object):
                     cv2.imshow('pix2pix', self.img)
 
                 self.send_to_process()
-                # print( ("Drawing Done") ################################# ARASH - callback when drawing is done)
 
         elif event == cv2.EVENT_MOUSEMOVE and self.drawing:
                 if self.drawing_area[0][0] < x < self.drawing_area[1][0] and self.drawing_area[0][1] < y < self.drawing_area[1][1]:
@@ -147,9 +146,6 @@ class Pix2Pix_Draw(object):
         cv2.setMouseCallback('pix2pix', self.draw_rectangle)
         
         self.post, self.get, self.pool, self.killer = inference_utility.process_handler("maps")
-        # if self.inference_mode == "maps":
-        #     cv2.createTrackbar("minimum", "pix2pix",0,50,self.set_min)
-        #     cv2.createTrackbar("maximum", "pix2pix",0,50,self.set_max)
         
         while True:
             key = cv2.waitKey(1) & 0xFF
@@ -162,49 +158,6 @@ class Pix2Pix_Draw(object):
                         self.img[41:553, 512:1024] = cv2.resize(self.resized_inf_img, (512, 512))
                         cv2.imshow('pix2pix', self.img)
 
-                        ##TODO : Image segmentation.
-
-
-            #         for segment, color in inference_config.maps_buttons_dict.items():
-            #             if segment.lower() in self.segment:
-            #                 lower = np.array([n-int(self.min) for n in color][::-1], dtype = "uint8")
-            #                 upper = np.array([n+int(self.max)for n in color][::-1], dtype = "uint8")
-            #                 mask = cv2.inRange(self.img, lower, upper)
-            #                 output = cv2.bitwise_and(self.img, self.img, mask = mask)
-            #                 output = self.img
-                            
-            #     overlay = self.img.copy()
-            
-            #     if len(self.resized_inf_img):
-            #         x_offset=0
-            #         y_offset=41
-            #         # overlay[y_offset:y_offset+self.resized_inf_img.shape[0], x_offset:x_offset+self.resized_inf_img.shape[1]] = self.resized_inf_img
-                    
-            #         if self.inference_mode == "maps":
-            #             image_out = drawing_utility.outline_image(output[41:553,0:512],
-            #                                                       threshold_range=(100,20),
-            #                                                       overdraw_lines=True)
-            #             # image_lines = image_out[1]
-            #             # print( (image_lines))
-            #             # cv2.imshow("Outlined Image", image_out[0])
-            #             # cv2.imwrite("map.jpg", overlay)
-            #             # cv2.imshow('pix2pix', np.hstack([overlay,  output]))
-            #             self.img[41:553, 512:1024] = cv2.resize(self.resized_inf_img, (512, 512))
-
-                #     elif self.inference_mode == "facades":
-                #         cv2.imshow('pix2pix', overlay)
-                # else:
-                #     if self.inference_mode == "maps":
-                #         image_out = drawing_utility.outline_image(output[41:553,0:512],
-                #                                                   threshold_range=(100,20),
-                #                                                   overdraw_lines=True)
-                #         #image_lines = image_out[1]
-                #         #print( (image_lines))
-                #         cv2.imshow("Outlined Image", image_out[0])
-                #         cv2.imshow('pix2pix', np.hstack([self.img,  output]))
-                #     elif self.inference_mode == "facades":
-                #         cv2.imshow('pix2pix', overlay)
-                    
             elif self.drawing and self.rect_endpoint_tmp:
                 rect_cpy = self.img.copy()
                 start_point = self.rect_bbox[0]
@@ -233,9 +186,6 @@ class Pix2Pix_Draw(object):
         
             if key == ord('-'):
                 self.brush_size -= 1
-        
-            #if key == ord('o'):
-                #cv2.waitKey(0)
 
             if key == ord('s'):
                 resized_image = cv2.resize(img[41:553, 0:512], (256, 256))
