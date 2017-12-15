@@ -36,7 +36,7 @@ def local_inference(input_image_queue,
                     mode,
                     *args):
     
-    print "local inference started"
+    print ("local inference started")
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
@@ -49,8 +49,8 @@ def local_inference(input_image_queue,
         saver = tf.train.import_meta_graph(model + "/export.meta")
         saver.restore(sess, model + "/export")
         
-        input_vars = json.loads(tf.get_collection("inputs")[0])
-        output_vars = json.loads(tf.get_collection("outputs")[0])
+        input_vars = json.loads(tf.get_collection("inputs")[0].decode('utf-8'))
+        output_vars = json.loads(tf.get_collection("outputs")[0].decode('utf-8'))
         
         _input = tf.get_default_graph().get_tensor_by_name(input_vars["input"])
         output = tf.get_default_graph().get_tensor_by_name(output_vars["output"])
@@ -78,7 +78,7 @@ def local_inference(input_image_queue,
                     f.write(output_data)
                 output_image_queue.put(output_file)
                 
-                print time.time() - start
+                print (time.time() - start)
     
             if lifetime_end.value:
                 break

@@ -20,12 +20,11 @@ class Pix2Pix_Draw(object):
         self.min = 0
         self.max = 0
         self.resized_inf_img = []
-    
         self.rect_endpoint_tmp = []
         self.rect_bbox = []
         self.drawing = False
-        self.img = np.zeros((553, 512, 3), np.uint8)
-        self.drawing_area = [(-1000, 40), (1000, 1000)]
+        self.img = np.zeros((553, 1024, 3), np.uint8)
+        self.drawing_area = [(-1000, 45), (508, 1000)]
         self.set_inference_mode()
         
     def set_inference_mode(self, *args):
@@ -33,8 +32,15 @@ class Pix2Pix_Draw(object):
             self.mode = False
             self.col = inference_config.maps_buttons_dict["Grass"][::-1]
             self.map_img = cv2.imread(inference_config.maps_init_file)
+            self.map_out = cv2.imread(inference_config.output_maps_file)
             self.img[41:553, 0:512] = self.map_img
+            self.img[41:553, 512:1024] = cv2.resize(self.map_out, (512, 512))
             cv2.rectangle(self.img, (0, 0), (512, 40), (128, 128, 128), -1)
+            self.img[0:41, 513:1024] = (0,0,0)
+
+            
+            cv2.putText(self.img, "OUTPUT", (725, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+
             self.box_size = (128, 30)
             self.brush_size = 5
         elif self.inference_mode == "facades":
@@ -47,7 +53,7 @@ class Pix2Pix_Draw(object):
 
     def setup_draw_btn_line(self, *args):
         for k, (button_text, button_color) in enumerate(self.buttons_dict.items()):
-            print button_text
+
             button_color = button_color[::-1]
             first_point = (((k + 1) * self.box_size[0]), 0)
             second_point = (k * self.box_size[0], self.box_size[1])
@@ -83,7 +89,7 @@ class Pix2Pix_Draw(object):
                 if self.x in range(position[1][0], position[0][0]) and self.y in range(position[0][1], position[1][1]):
                     self.col = color
                     current_selection = (list(self.buttons_dict.keys())[list(self.buttons_dict.values()).index(self.col[::-1])])
-                    print('Switched to {0}'.format(current_selection))
+                    print(('Switched to {0}'.format(current_selection)))
                     break
 
             if self.x in range(self.drawing_area[0][0], self.drawing_area[1][0]) and self.y in range(self.drawing_area[0][1], self.drawing_area[1][1]):
@@ -118,7 +124,7 @@ class Pix2Pix_Draw(object):
                     cv2.imshow('pix2pix', self.img)
 
                 self.send_to_process()
-                # print ("Drawing Done") ################################# ARASH - callback when drawing is done
+                # print( ("Drawing Done") ################################# ARASH - callback when drawing is done)
 
         elif event == cv2.EVENT_MOUSEMOVE and self.drawing:
                 if self.drawing_area[0][0] < x < self.drawing_area[1][0] and self.drawing_area[0][1] < y < self.drawing_area[1][1]:
@@ -137,53 +143,67 @@ class Pix2Pix_Draw(object):
     def draw_run(self, *args):
         img = self.img.copy()
         cv2.namedWindow('pix2pix')
+        cv2.imshow('pix2pix', self.img)       
         cv2.setMouseCallback('pix2pix', self.draw_rectangle)
         
         self.post, self.get, self.pool, self.killer = inference_utility.process_handler("maps")
-        if self.inference_mode == "maps":
-            cv2.createTrackbar("minimum", "pix2pix",0,50,self.set_min)
-            cv2.createTrackbar("maximum", "pix2pix",0,50,self.set_max)
+        # if self.inference_mode == "maps":
+        #     cv2.createTrackbar("minimum", "pix2pix",0,50,self.set_min)
+        #     cv2.createTrackbar("maximum", "pix2pix",0,50,self.set_max)
         
         while True:
             key = cv2.waitKey(1) & 0xFF
             
-            self.get_from_process() 
-            
             if not self.drawing:
                 if self.inference_mode == "maps":
-                    for segment, color in inference_config.maps_buttons_dict.iteritems():
-                        if segment.lower() in self.segment:
-                            lower = np.array([n-int(self.min) for n in color][::-1], dtype = "uint8")
-                            upper = np.array([n+int(self.max)for n in color][::-1], dtype = "uint8")
-                            mask = cv2.inRange(self.img, lower, upper)
-                            output = cv2.bitwise_and(self.img, self.img, mask = mask)
+
+                    self.get_from_process() 
+                    if len(self.resized_inf_img):
+                        self.img[41:553, 512:1024] = cv2.resize(self.resized_inf_img, (512, 512))
+                        cv2.imshow('pix2pix', self.img)
+
+                        ##TODO : Image segmentation.
+
+
+            #         for segment, color in inference_config.maps_buttons_dict.items():
+            #             if segment.lower() in self.segment:
+            #                 lower = np.array([n-int(self.min) for n in color][::-1], dtype = "uint8")
+            #                 upper = np.array([n+int(self.max)for n in color][::-1], dtype = "uint8")
+            #                 mask = cv2.inRange(self.img, lower, upper)
+            #                 output = cv2.bitwise_and(self.img, self.img, mask = mask)
+            #                 output = self.img
                             
-                overlay = self.img.copy()
-                if len(self.resized_inf_img):
-                    x_offset=0
-                    y_offset=41
-                    overlay[y_offset:y_offset+self.resized_inf_img.shape[0], x_offset:x_offset+self.resized_inf_img.shape[1]] = self.resized_inf_img
-                    if self.inference_mode == "maps":
-                        image_out = drawing_utility.outline_image(output[41:553,0:512],
-                                                                  threshold_range=(100,20),
-                                                                  overdraw_lines=True)
-                        #image_lines = image_out[1]
-                        #print (image_lines)
-                        cv2.imshow("Outlined Image", image_out[0])
-                        cv2.imshow('pix2pix', np.hstack([overlay,  output]))
-                    elif self.inference_mode == "facades":
-                        cv2.imshow('pix2pix', overlay)
-                else:
-                    if self.inference_mode == "maps":
-                        image_out = drawing_utility.outline_image(output[41:553,0:512],
-                                                                  threshold_range=(100,20),
-                                                                  overdraw_lines=True)
-                        #image_lines = image_out[1]
-                        #print (image_lines)
-                        cv2.imshow("Outlined Image", image_out[0])
-                        cv2.imshow('pix2pix', np.hstack([self.img,  output]))
-                    elif self.inference_mode == "facades":
-                        cv2.imshow('pix2pix', overlay)
+            #     overlay = self.img.copy()
+            
+            #     if len(self.resized_inf_img):
+            #         x_offset=0
+            #         y_offset=41
+            #         # overlay[y_offset:y_offset+self.resized_inf_img.shape[0], x_offset:x_offset+self.resized_inf_img.shape[1]] = self.resized_inf_img
+                    
+            #         if self.inference_mode == "maps":
+            #             image_out = drawing_utility.outline_image(output[41:553,0:512],
+            #                                                       threshold_range=(100,20),
+            #                                                       overdraw_lines=True)
+            #             # image_lines = image_out[1]
+            #             # print( (image_lines))
+            #             # cv2.imshow("Outlined Image", image_out[0])
+            #             # cv2.imwrite("map.jpg", overlay)
+            #             # cv2.imshow('pix2pix', np.hstack([overlay,  output]))
+            #             self.img[41:553, 512:1024] = cv2.resize(self.resized_inf_img, (512, 512))
+
+                #     elif self.inference_mode == "facades":
+                #         cv2.imshow('pix2pix', overlay)
+                # else:
+                #     if self.inference_mode == "maps":
+                #         image_out = drawing_utility.outline_image(output[41:553,0:512],
+                #                                                   threshold_range=(100,20),
+                #                                                   overdraw_lines=True)
+                #         #image_lines = image_out[1]
+                #         #print( (image_lines))
+                #         cv2.imshow("Outlined Image", image_out[0])
+                #         cv2.imshow('pix2pix', np.hstack([self.img,  output]))
+                #     elif self.inference_mode == "facades":
+                #         cv2.imshow('pix2pix', overlay)
                     
             elif self.drawing and self.rect_endpoint_tmp:
                 rect_cpy = self.img.copy()
@@ -194,13 +214,14 @@ class Pix2Pix_Draw(object):
                 else:
                     rect_cpy = self.img.copy()
                     cv2.circle(rect_cpy, (self.x, self.y), self.brush_size, self.col, -1)
+                
                 cv2.imshow('pix2pix', rect_cpy)
         
         
             if key == ord('q'):
                 self.killer.value = True
                 for _process in self.pool:
-                    print "killing process", _process
+                    print( "killing process", _process)
                     _process.join()
                 break
             if self.inference_mode == "maps":
