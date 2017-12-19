@@ -8,6 +8,10 @@ import argparse
 import numpy as np
 from utility import inference_utility, inference_config
 import threading
+import socket
+import os
+import json
+
 support = ["maps", "facades"]
 
 class Pix2Pix_Draw(threading.Thread):
@@ -29,8 +33,16 @@ class Pix2Pix_Draw(threading.Thread):
         self.funcs = []
         self.interval = interval
         
+        self.draw_map_curves_in_maya = True
+        self.host = 'localhost'
+        self.port = 7002
+
     def set_inference_mode(self, *args):
         if self.inference_mode == "maps":
+
+            if self.draw_map_curves_in_maya:
+                self.init_map_in_maya(host=self.host, port=self.port)
+
             self.mode = False
             self.col = inference_config.maps_buttons_dict["Grass"][::-1]
             self.map_img = cv2.imread(inference_config.maps_init_file)
@@ -87,13 +99,30 @@ class Pix2Pix_Draw(threading.Thread):
         self.send_to_process()
         if self.drawing:
             threading.Timer(float(self.interval), self.beat).start()
-        
+
+    def init_map_in_maya(self, host='localhost', port=7002):
+
+        script_dir = (os.path.join(os.path.join(os.getcwd(), "utility"), "maps_sandbox"))        
+        curves_data = json.load(open(script_dir + "/init_map.json"))
+
+        maya_cmd = "import sys; sys.path.append('%s');" %script_dir
+        maya_cmd += "import init_map; reload(init_map); init_map.init_map_in_maya(%s)"%curves_data
+
+        clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        clientsocket.connect((host, port))
+        clientsocket.send(maya_cmd.encode('utf-8'))
+
+    def draw_curve_in_maya(self, curve_points, host='localhost', port=7002):
+        clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        clientsocket.connect((host, port))
+        clientsocket.send(("cmds.curve(p=%s)"%str(curve_points)).encode('utf-8'))
             
     def draw_rectangle(self, event, x, y, flags, param):
         self.x = x
         self.y = y
-    
         if event == cv2.EVENT_LBUTTONDOWN:
+            self.drawing_points = []
+            self.start_point = (x,0,y)
             self.rect_endpoint_tmp = []
             
             for color, position in self.color_positions.items():
@@ -109,6 +138,7 @@ class Pix2Pix_Draw(threading.Thread):
                 self.drawing = True
 
         elif event == cv2.EVENT_LBUTTONUP:
+            # self.end_point = (x,0,y)
 
             if self.drawing_area[0][0] < self.x < self.drawing_area[1][0] and self.drawing_area[0][1] < self.y < self.drawing_area[1][1]:
 
@@ -135,6 +165,8 @@ class Pix2Pix_Draw(threading.Thread):
                     cv2.circle(self.img, (self.x, self.y), self.brush_size, self.col, -1)            
                     cv2.imshow('pix2pix', self.img)
                 self.funcs.remove(self.heart)
+                self.draw_curve_in_maya(self.drawing_points, host=self.host, port=self.port)
+                # print (self.drawing_points)
                 #self.send_to_process()
 
         elif event == cv2.EVENT_MOUSEMOVE and self.drawing:
@@ -142,6 +174,7 @@ class Pix2Pix_Draw(threading.Thread):
                     self.heart()
                     self.funcs.append(self.heart)
                 if self.drawing_area[0][0] < x < self.drawing_area[1][0] and self.drawing_area[0][1] < y < self.drawing_area[1][1]:
+                    self.drawing_points.append((x,0,y))
                     if self.mode:
                         self.rect_endpoint_tmp = [(x, y)]
                     else:

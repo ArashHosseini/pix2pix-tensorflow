@@ -3,6 +3,10 @@ Created on Dec 2, 2017
 
 @author: flyn
 '''
+# windows temporary fix
+import sys, os
+sys.path.append("%s/utility" %os.getcwd())
+
 import numpy as np
 import multiprocessing as mp
 import tensorflow as tf
