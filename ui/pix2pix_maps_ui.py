@@ -7,11 +7,11 @@ import cv2
 import argparse
 import numpy as np
 from utility import inference_utility, inference_config
-
+import threading
 support = ["maps", "facades"]
 
-class Pix2Pix_Draw(object):
-    def __init__(self, segment = [], inference_mode = "maps", *args):
+class Pix2Pix_Draw(threading.Thread):
+    def __init__(self, segment = [], inference_mode = "maps", interval=0.09, *args):
         self.inference_mode = inference_mode 
         self.tmp_ = inference_config.maps_tmp_file if self.inference_mode == "maps" else inference_config.tmp_file
         self.buttons_dict = inference_config.maps_buttons_dict if self.inference_mode == "maps" else inference_config.buttons_dict
@@ -26,6 +26,8 @@ class Pix2Pix_Draw(object):
         self.img = np.zeros((553, 1024, 3), np.uint8)
         self.drawing_area = [(-1000, 45), (508, 1000)]
         self.set_inference_mode()
+        self.funcs = []
+        self.interval = interval
         
     def set_inference_mode(self, *args):
         if self.inference_mode == "maps":
@@ -77,6 +79,16 @@ class Pix2Pix_Draw(object):
             #cv2.imshow("inference", inference_read)
             self.resized_inf_img = cv2.resize(inference_read, (512, 512))
             
+    def beat(self, *args):
+        self.get_from_process()
+        self.heart()
+            
+    def heart(self, *args):
+        self.send_to_process()
+        if self.drawing:
+            threading.Timer(float(self.interval), self.beat).start()
+        
+            
     def draw_rectangle(self, event, x, y, flags, param):
         self.x = x
         self.y = y
@@ -122,10 +134,13 @@ class Pix2Pix_Draw(object):
                 else:
                     cv2.circle(self.img, (self.x, self.y), self.brush_size, self.col, -1)            
                     cv2.imshow('pix2pix', self.img)
-
-                self.send_to_process()
+                self.funcs.remove(self.heart)
+                #self.send_to_process()
 
         elif event == cv2.EVENT_MOUSEMOVE and self.drawing:
+                if not self.heart in self.funcs:
+                    self.heart()
+                    self.funcs.append(self.heart)
                 if self.drawing_area[0][0] < x < self.drawing_area[1][0] and self.drawing_area[0][1] < y < self.drawing_area[1][1]:
                     if self.mode:
                         self.rect_endpoint_tmp = [(x, y)]
@@ -150,14 +165,14 @@ class Pix2Pix_Draw(object):
         while True:
             key = cv2.waitKey(1) & 0xFF
             
+            if len(self.resized_inf_img):
+                self.img[41:553, 512:1024] = cv2.resize(self.resized_inf_img, (512, 512))
+                cv2.imshow('pix2pix', self.img)
+
             if not self.drawing:
                 if self.inference_mode == "maps":
-
-                    self.get_from_process() 
-                    if len(self.resized_inf_img):
-                        self.img[41:553, 512:1024] = cv2.resize(self.resized_inf_img, (512, 512))
-                        cv2.imshow('pix2pix', self.img)
-
+                    pass
+                    #self.get_from_process()
             elif self.drawing and self.rect_endpoint_tmp:
                 rect_cpy = self.img.copy()
                 start_point = self.rect_bbox[0]
@@ -197,13 +212,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Pix2Pix Inference Module')
     parser.add_argument('-m', action="store", dest='inference_mode',help='select inference mode, default is maps', default="maps")
     parser.add_argument('-s',dest='segment',help='segement detection like street, block, grass and buildings', default="street", nargs='+')
+    parser.add_argument('-i', action="store", dest='interval',help='heartbeat interval', default="0.06")
     results = parser.parse_args()
     if not results.inference_mode in support:
         raise Exception("{0} not supported yet".format(results.inference_mode))
     _inference_mode = results.inference_mode
-    segment = results.segment
 
-    draw = Pix2Pix_Draw(segment, _inference_mode)
+    draw = Pix2Pix_Draw(results.segment,
+                        _inference_mode,
+                        results.interval)
     draw.setup_draw_btn_line()
     draw.draw_run()
 
