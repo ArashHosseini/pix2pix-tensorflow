@@ -6,6 +6,10 @@ Created on Dec 1, 2017
 import cv2
 import numpy as np
 from utility import inference_utility, inference_config
+import logging 
+
+logging.config.fileConfig('{0}/utility/_logging/pixi_logging.conf'.format(os.path.abspath(os.path.dirname(__file__))))
+logger= logging.getLogger('pix2pix')
 
 rect_endpoint_tmp = []
 rect_bbox = []
@@ -101,7 +105,7 @@ cv2.namedWindow('pix2pix')
 tmp_ = inference_config.tmp_file
 cv2.setMouseCallback('pix2pix', draw_rectangle)
 
-post,get,pool,killer = inference_utility.process_handler("facades")
+post,get,pool,killer = inference_utility.process_handler("facades", logger)
 
 while True:
     key = cv2.waitKey(1) & 0xFF

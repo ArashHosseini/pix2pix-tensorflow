@@ -15,21 +15,36 @@ import base64
 import ctypes
 import inference_config
 import time
+import socket
+
+def check_maya_connection(host, port, logger):
+    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        clientsocket.connect((host, port))
+    except socket.error as e:
+        logger.info("maya connection failed!!!")
+        logger.debug("maya connection failed!!! {0}".format(e))
+        return 
+    else:
+        return True
+    
 
 
-def process_handler(mode):
+def process_handler(mode,
+                    logger):
     live_process = []
     manager = mp.Manager()
     lifetime_end = manager.Value(ctypes.c_char_p, False)
-    input_image_queue = mp.Queue()
-    output_image_queue = mp.Queue()
+    input_image_queue, output_image_queue = [mp.Queue() for _ in range(2)]
     img_cap_process = mp.Process(target=local_inference,
                                  args=(input_image_queue,
-                                         output_image_queue,
-                                         lifetime_end,
-                                         mode,))
+                                       output_image_queue,
+                                       lifetime_end,
+                                       mode,
+                                       logger,))
     
     live_process.append(img_cap_process)
+    logger.debug("starting local inference process")
     img_cap_process.start()
     
     return input_image_queue, output_image_queue, live_process, lifetime_end
@@ -38,12 +53,14 @@ def local_inference(input_image_queue,
                     output_image_queue,
                     lifetime_end,
                     mode,
+                    logger,
                     *args):
     
-    print ("local inference started")
+    logger.info("local inference started")
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
+        logger.debug("local inference session started with {0}".format(mode))
         if mode == "facades":
             output_file = inference_config.output_file
             model = inference_config.model
@@ -62,6 +79,7 @@ def local_inference(input_image_queue,
             if not input_image_queue.empty():
                 start = time.time()
                 input_file = input_image_queue.get()
+                logger.debug("local inference get {0}".format(input_file))
                 # if input_file:
                 with open(input_file, "rb") as f:
                     input_data = f.read()
@@ -79,10 +97,14 @@ def local_inference(input_image_queue,
                 output_data = base64.urlsafe_b64decode(b64data.encode("ascii"))
                             
                 with open(output_file, "wb") as f:
+                    logger.debug("local inference open file {0}".format(output_file))
                     f.write(output_data)
-                output_image_queue.put(output_file)
                 
-                print (time.time() - start)
+                
+                output_image_queue.put(output_file)
+                logger.debug("local inference sent {0}".format(output_file))
+                logger.info(time.time() - start)
     
             if lifetime_end.value:
+                logger.debug("exiting local inference")
                 break
