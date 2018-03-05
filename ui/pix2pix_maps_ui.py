@@ -14,16 +14,16 @@ import json
 import logging.config
 
 
-logging.config.fileConfig('{0}/utility/_logging/pixi_logging.conf'.format(os.path.abspath(os.path.dirname(__file__))))
-logger= logging.getLogger('pix2pix')
+logging.basicConfig(level=logging.INFO)#logging.config.fileConfig('{0}/utility/_logging/pixi_logging.conf'.format(os.path.abspath(os.path.dirname(__file__))))
+logger= logging.getLogger(__name__)
 
-support = ["maps", "facades"]
+support = ["maps", "facades", "face"]
 
 class Pix2Pix_Maps(threading.Thread):
-    def __init__(self, segment = [], inference_mode = "maps", interval=0.09, *args):
+    def __init__(self, segment = [], inference_mode = "face", interval=0.09, *args):
         self.inference_mode = inference_mode 
-        self.tmp_ = inference_config.maps_tmp_file if self.inference_mode == "maps" else inference_config.tmp_file
-        self.buttons_dict = inference_config.maps_buttons_dict if self.inference_mode == "maps" else inference_config.buttons_dict
+        self.tmp_ = inference_config.maps_tmp_file if self.inference_mode == "face" else inference_config.tmp_file
+        self.buttons_dict = inference_config.face_dict if self.inference_mode == "face" else inference_config.buttons_dict
         self.color_positions = {}
         self.segment = segment
         self.min = 0
@@ -32,12 +32,12 @@ class Pix2Pix_Maps(threading.Thread):
         self.rect_endpoint_tmp = []
         self.rect_bbox = []
         self.drawing = False
-        self.drawing_area = [(-1000, 45), (508, 1000)]
+        self.drawing_area = [(-1000, 45), (1024, 2048)]
         self.funcs = []
         self.interval = interval
         
-        self.img = np.zeros((553, 1024, 3), np.uint8)
-        self.draw_map_curves_in_maya = True
+        self.img = np.zeros((1024+41, 2048, 3), np.uint8)
+        self.draw_map_curves_in_maya = False
         self.host = 'localhost'
         self.port = 7002
         self.warm_up = False
@@ -46,7 +46,7 @@ class Pix2Pix_Maps(threading.Thread):
         self.set_inference_mode()
 
     def set_inference_mode(self, *args):
-        if self.inference_mode == "maps":
+        if self.inference_mode == "face":
             if self.draw_map_curves_in_maya:
                 if inference_utility.check_maya_connection(self.host,
                                                             self.port,
@@ -57,25 +57,31 @@ class Pix2Pix_Maps(threading.Thread):
                     self.output_label = " maya connection failed!"
 
             self.mode = False
-            self.col = inference_config.maps_buttons_dict["Grass"][::-1]
-            self.map_img = cv2.imread(inference_config.maps_init_file)
-            self.map_out = cv2.imread(inference_config.output_maps_file)
-            self.img[41:553, 0:512] = self.map_img
-            self.img[41:553, 512:1024] = cv2.resize(self.map_out, (512, 512))
-            self.img[0:41, 513:1024] = (0,0,0)
-            cv2.rectangle(self.img, (0, 0), (512, 40), (128, 128, 128), -1)
+            self.col = inference_config.face_dict["mouth_"][::-1]
+            self.map_img = cv2.imread(inference_config.maps_init_file, 1)
+            self.map_out = cv2.imread(inference_config.output_maps_file, 1)
 
+            blank_image = np.zeros((1024,1024,3), np.uint8)
+
+            width = 1024
+            blank_image[:,int(0):int(0.5)*int(width)] = (0,0,0)      # (B, G, R)
+            blank_image[:,int(0.5)*int(width):int(width)] = (0,0,0)
+
+            self.img[41:1024+41, 0:1024] = blank_image
+            self.img[41:1024+41, 1024:2048] = self.map_out#cv2.resize(self.map_out, (512, 512))
+            self.img[0:41, 1025:2048] = (0,0,0)
+            cv2.rectangle(self.img, (0, 0), (1024, 40), (128, 128, 128), -1)
             self.box_size = (128, 30)
-            self.brush_size = 5
+            self.brush_size = 10
         elif self.inference_mode == "facades":
             self.mode = True
-            self.col = (0,0,255)
+            self.col = (0,0,0)
             self.img[:] = (13,61,251)[::-1]
             cv2.rectangle(self.img, (0, 0), (512, 40), (255,255,255), -1)
             self.box_size = (47,30)
             
-        cv2.putText(self.img, "OUTPUT", (550, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
-        cv2.putText(self.img, self.output_label, (750, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255))
+        cv2.putText(self.img, "OUTPUT", (1024, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+        #cv2.putText(self.img, self.output_label, (750, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255))
 
 
     def setup_draw_btn_line(self, *args):
@@ -93,7 +99,7 @@ class Pix2Pix_Maps(threading.Thread):
         if not self.warm_up:
             logger.info("Warm up, take a while....")
             self.warm_up = not self.warm_up
-        resized_image = cv2.resize(self.img[41:553, 0:512], (256, 256))
+        resized_image = self.img[41:1024+41, 0:1024].copy()#cv2.resize(self.img[41:1024+41, 0:1024], (1024, 1024))
         cv2.imwrite(self.tmp_, resized_image)
         while self.post.empty():
             self.post.put(self.tmp_)
@@ -105,10 +111,11 @@ class Pix2Pix_Maps(threading.Thread):
             inference = self.get.get()
             logger.debug("main get {0}".format(inference))
             inference_read = cv2.imread(inference)
-            self.resized_inf_img = cv2.resize(inference_read, (512, 512))
+            self.resized_inf_img = inference_read#cv2.resize(inference_read, (1024, 1024))
+            return
             
     def beat(self, *args):
-        if self.inference_mode == "maps":
+        if self.inference_mode == "face":
             self.get_from_process()
         self.heart()
             
@@ -213,7 +220,7 @@ class Pix2Pix_Maps(threading.Thread):
     def draw_run(self, *args):
         img = self.img.copy()
         cv2.namedWindow('pix2pix')
-        cv2.imshow('pix2pix', self.img)       
+        #cv2.imshow('pix2pix', self.img)       
         cv2.setMouseCallback('pix2pix', self.draw_rectangle)
         
         self.post, self.get, self.pool, self.killer = inference_utility.process_handler( 
@@ -225,8 +232,7 @@ class Pix2Pix_Maps(threading.Thread):
             key = cv2.waitKey(1) & 0xFF
             
             if len(self.resized_inf_img):
-                self.img[41:553, 512:1024] = cv2.resize(self.resized_inf_img, (512, 512))
-                cv2.imshow('pix2pix', self.img)
+                self.img[41:1024+41, 1024:2048] = self.resized_inf_img#cv2.resize(self.resized_inf_img, (512, 512))
 
             elif self.drawing and self.rect_endpoint_tmp:
                 rect_cpy = self.img.copy()
@@ -249,7 +255,7 @@ class Pix2Pix_Maps(threading.Thread):
                     _process.join()
                 break
             
-            if self.inference_mode == "maps":
+            if self.inference_mode == "face":
                 if key == ord('m'):
                     self.mode = not self.mode
                     
@@ -264,6 +270,8 @@ class Pix2Pix_Maps(threading.Thread):
             if key == ord('-'):
                 logger.debug("down scale brush size")
                 self.brush_size -= 1
+
+            cv2.imshow('pix2pix', self.img)
 
         cv2.destroyAllWindows()
 

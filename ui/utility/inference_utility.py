@@ -65,7 +65,7 @@ def local_inference(input_image_queue,
             output_file = inference_config.output_file
             model = inference_config.model
         else:
-            model = inference_config.maps_model
+            model = inference_config.face_model
             output_file = inference_config.output_maps_file 
         saver = tf.train.import_meta_graph(model + "/export.meta")
         saver.restore(sess, model + "/export")
